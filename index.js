@@ -1,25 +1,26 @@
-// const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const { Telegraf, Markup } = require('telegraf');
+const { downloadFile, convert2Gif, packFile } = require('./util');
 
 require('dotenv').config();
 
 const { BOT_TOKEN, PORT = 3000 } = process.env
 
-const bot = new Telegraf(BOT_TOKEN);
+const bot = new Telegraf(BOT_TOKEN, { handlerTimeout: 900_000 });
+
+const assertPath = path.resolve(__dirname, 'assets');
 
 const globalInfo = {
-  setName: '',
+  stickerInfo: null,
   stickerSetInfo: null,
-  file_id: null,
 }
 
-function clearGlobalInfo () {
-  globalInfo.setName = '';
-  globalInfo.stickerSetInfo = null;
-  globalInfo.file_id = null
-}
+// function clearGlobalInfo() {
+//   globalInfo.stickerInfo = null;
+//   globalInfo.stickerSetInfo = null;
+// }
+
 
 bot.command('start', ctx => {
   console.log(ctx.from)
@@ -30,66 +31,125 @@ bot.help((ctx) => ctx.reply('Send me a sticker'));
 
 bot.on('sticker', async (ctx) => {
   const stickerInfo = ctx.update.message.sticker;
-  // console.log(JSON.stringify(stickerInfo));
+  console.log(JSON.stringify(stickerInfo));
 
-  // collect info  
-  const { set_name, file_id, file_unique_id } = stickerInfo;
+  // collect info
+  const { set_name } = stickerInfo;
   globalInfo.stickerSetInfo = await ctx.telegram.getStickerSet(set_name);
-  globalInfo.setName = set_name;
-  globalInfo.file_id = file_id;
-  
+  globalInfo.stickerInfo = stickerInfo;
+
   ctx.reply(
-    'download current single sticker or all?',
+    'Download current single sticker or all of sticker set?',
     Markup.keyboard([
-			["😎 Download Single"], // Row1 with 2 buttons
-			["😎 Download All"], // Row2 with 2 buttons
-			// ["📢 Ads", "⭐️ Rate us", "👥 Share"], // Row3 with 3 buttons
-		])
-			.oneTime()
-			.resize(),
+      ["😎 Download Single"], // Row1 with 2 buttons
+      ["😎 Download All"], // Row2 with 2 buttons
+      // ["📢 Ads", "⭐️ Rate us", "👥 Share"], // Row3 with 3 buttons
+    ])
+      .oneTime()
+      .resize(),
   );
 });
 
 
 bot.hears("😎 Download Single", async (ctx) => {
   // ctx.reply("Single");
-  const { file_id } = globalInfo;
-  if (file_id) {
-    const link = await ctx.telegram.getFileLink(file_id);
-    const assertPath = path.resolve(__dirname, `assets/${file_id}`);
-    // fetch(link)
-    //   .then(
-    //     res => {
-    //       new Promise((resolve, reject) => {
-    //         const dest = fs.createWriteStream(assertPath);
-    //         res.body.pipe(dest);
-    //         res.body.on("end", () => resolve());
-    //         dest.on("error", reject);
-    //       })
-    //     }
-    //   )
-    //   .then(() => {
-    //     ctx.replyWithDocument({
-    //       source: fs.createReadStream(assertPath),
-    //       filename: `${file_id}.webm`,
-    //     })
-    //   })
-    //   .catch(() => {
-    //     ctx.reply('An error occured')
-    //   })
+  const { stickerInfo: { file_id: fileId, is_video: isVideo } } = globalInfo;
+  if (fileId) {
+    const link = await ctx.telegram.getFileLink(fileId);
+    const assertFullPath = path.resolve(assertPath, `${fileId}.webm`);
+    const downloadFileWriteStream = fs.createWriteStream(assertFullPath);
+    console.log('link: ', link.href)
+
+    console.log('isVideo: ', isVideo)
+    if (!isVideo) {
+      ctx.reply('😂 no video sticker are not supported yet');
+      return;
+    }
+
+    ctx.reply('Downloading...')
+    await downloadFile(link, downloadFileWriteStream)
+
+    ctx.reply('Converting...')
+    await convert2Gif(assertPath, fileId);
+
+    ctx.reply('packing...')
+    await packFile(fileId, [path.resolve(assertPath, `${fileId}.gif`)])
+
+    ctx.replyWithDocument({
+      source: fs.createReadStream(path.resolve(assertPath, `${fileId}.zip`)),
+      filename: `${fileId}.zip`,
+    }).then(() => {
+      fs.readdir(assertPath, (e, files) => {
+        if (e) {
+          console.error('failed to clear temp folder: ', e);
+          return;
+        }
+        files.forEach(v => {
+          const filePath = path.resolve(assertPath, v);
+          fs.unlink(filePath, (e) => console.log(e))
+        })
+      })
+    })
   }
- 
 });
-// bot.hears("😎 Download All", async (ctx) => {
-//   const { setName, stickerSetInfo } = globalInfo;
-//   if (setName && stickerSetInfo) {
-//     const { stickers, name } = stickerSetInfo;
-//     const stickerSetName = name || setName;
-//     const urls = (await Promise.all(stickers.map(i => ctx.telegram.getFileLink(i.file_id)))).map(i => i.href);
-//     console.log('urls: ', urls);
-//   }
-//   ctx.reply("All")
-// });
+
+bot.hears("😎 Download All", async (ctx) => {
+  const { stickerInfo: { set_name }, stickerSetInfo: { stickers } } = globalInfo;
+
+  let _stickers = stickers;
+  if (stickers.some(i => !i.is_video)) {
+    ctx.reply('😂 Only video sticker are supported');
+    ctx.reply('😁 try filtering video sticker...')
+    _stickers = stickers.filter(i => i.is_video);
+  }
+
+  if (_stickers.length === 0) {
+    ctx.reply('😂 no video sticker found')
+    return;
+  }
+
+  ctx.reply('Getting stickerset urls...');
+  const urls = (await Promise.all(_stickers.map(i => ctx.telegram.getFileLink(i.file_id)))).map(i => i.href);
+  console.log('urls: ', urls);
+
+  try {
+    ctx.reply('Getting stickerset info...');
+    await Promise.all(urls.map((url, index) => {
+      const { file_id } = _stickers[index];
+      const assertFullPath = path.resolve(assertPath, `${file_id}.webm`);
+      const downloadFileWriteStream = fs.createWriteStream(assertFullPath);
+      return downloadFile(url, downloadFileWriteStream);
+    }))
+
+    ctx.reply('Converting...')
+    await Promise.all(_stickers.map(({ file_id }) => convert2Gif(assertPath, file_id)))
+
+    ctx.reply('packing...')
+    await packFile(set_name, _stickers.reduce((prev, { file_id }) => {
+      prev.push(path.resolve(assertPath, `${file_id}.gif`))
+      return prev;
+    }, []))
+
+    ctx.replyWithDocument({
+      source: fs.createReadStream(path.resolve(assertPath, `${set_name}.zip`)),
+      filename: `${set_name}.zip`,
+    }).then(() => {
+      fs.readdir(assertPath, (e, files) => {
+        if (e) {
+          console.error('failed to clear temp folder: ', e);
+          return;
+        }
+        files.forEach(v => {
+          const filePath = path.resolve(assertPath, v);
+          fs.unlink(filePath, (e) => console.log(e))
+        })
+      })
+    })
+
+  } catch (e) {
+    console.error(e);
+  }
+});
 
 
 bot.launch();
@@ -98,11 +158,22 @@ bot.launch();
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-// fetch('http://www.baidu.com')
-//   .then(res => res.text())
-//   .then(res => {
-//     console.log('res: ', res)
-//   })
-//   .catch(e => {
-//     console.log('failed to fetch', e.message)
-//   })
+
+
+
+/**
+ * for test
+ */
+
+// convert2Gif(path.resolve(__dirname, 'assets'), 'CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z').catch(e => {
+//   console.log('error: ', e)
+// })
+
+
+// packFile(
+//   'test',
+//   [
+//     path.resolve(__dirname, 'assets/CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z.gif'),
+//     path.resolve(__dirname, 'assets/CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z.webm'),
+//   ]
+// );
