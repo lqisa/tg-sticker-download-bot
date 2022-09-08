@@ -16,9 +16,8 @@ const webhookUrl = `${WEBHOOK_DOMAIN}/${WEBHOOK_PATH}`;
 const webhookPath = `/${WEBHOOK_PATH}`;
 
 
-bot.telegram.setWebhook(webhookUrl)
-
 const bot = new Telegraf(BOT_TOKEN, { handlerTimeout: 900_000 });
+bot.telegram.setWebhook(webhookUrl)
 
 const assertPath = path.resolve(__dirname, 'assets');
 
