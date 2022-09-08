@@ -5,15 +5,15 @@ const { downloadFile, convert2Gif, packFile } = require('./util');
 
 require('dotenv').config();
 
-const { 
-  BOT_TOKEN, 
+const {
+  BOT_TOKEN,
   PORT = 3000,
   WEBHOOK_DOMAIN,
   WEBHOOK_PATH
 } = process.env
 
-const webhookUrl = `${process.env.WEBHOOK_DOMAIN}/${process.env.WEBHOOK_PATH}`;
-const webhookPath = `/${process.env.WEBHOOK_PATH}`;
+const webhookUrl = `${WEBHOOK_DOMAIN}/${WEBHOOK_PATH}`;
+const webhookPath = `/${WEBHOOK_PATH}`;
 
 
 bot.telegram.setWebhook(webhookUrl)
