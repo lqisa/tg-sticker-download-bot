@@ -65,7 +65,7 @@ bot.on('sticker', async (ctx) => {
 
 bot.hears("😎 Download Single", async (ctx) => {
   // ctx.reply("Single");
-  if (!globalInfo || !globalInfo?.stickerInfo) return;
+  if (!globalInfo || !(globalInfo && globalInfo.stickerInfo)) return;
   const { stickerInfo: { file_id: fileId, is_video: isVideo } } = globalInfo;
   if (fileId) {
     const link = await ctx.telegram.getFileLink(fileId);
@@ -107,6 +107,7 @@ bot.hears("😎 Download Single", async (ctx) => {
 });
 
 bot.hears("😎 Download All", async (ctx) => {
+  if (!globalInfo || !(globalInfo && globalInfo.stickerInfo) || !(globalInfo && globalInfo.stickerSetInfo)) return;
   const { stickerInfo: { set_name }, stickerSetInfo: { stickers } } = globalInfo;
 
   let _stickers = stickers;
