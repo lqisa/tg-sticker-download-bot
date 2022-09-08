@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "build": "glup"
+    "bundle": "glup"
   },
   "keywords": [],
   "author": "",
