@@ -5,7 +5,18 @@ const { downloadFile, convert2Gif, packFile } = require('./util');
 
 require('dotenv').config();
 
-const { BOT_TOKEN, PORT = 3000 } = process.env
+const { 
+  BOT_TOKEN, 
+  PORT = 3000,
+  WEBHOOK_DOMAIN,
+  WEBHOOK_PATH
+} = process.env
+
+const webhookUrl = `${process.env.WEBHOOK_DOMAIN}/${process.env.WEBHOOK_PATH}`;
+const webhookPath = `/${process.env.WEBHOOK_PATH}`;
+
+
+bot.telegram.setWebhook(webhookUrl)
 
 const bot = new Telegraf(BOT_TOKEN, { handlerTimeout: 900_000 });
 
@@ -152,7 +163,23 @@ bot.hears("😎 Download All", async (ctx) => {
 });
 
 
-bot.launch();
+const app = new Koa()
+app.use(koaBody())
+app.use(async (ctx, next) => {
+  if (ctx.method !== 'POST' || ctx.url !== webhookPath) {
+    return next()
+  }
+  await bot.handleUpdate(ctx.request.body, ctx.response)
+  ctx.status = 200
+})
+app.use(async (ctx) => {
+  ctx.body = {
+    webhookUrl: webhookUrl,
+    webhookPath: webhookPath
+  }
+})
+
+app.listen(3000)
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
