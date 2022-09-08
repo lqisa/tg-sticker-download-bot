@@ -16,7 +16,9 @@
     "dotenv": "^16.0.2",
     "fluent-ffmpeg": "^2.1.2",
     "jszip": "^3.10.1",
-    "telegraf": "^4.9.1"
+    "telegraf": "^4.9.1",
+    "koa": "^2.13.4",
+    "koa-body": "^5.0.0"
   },
   "devDependencies": {
     "gulp": "^4.0.2",
