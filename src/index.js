@@ -65,6 +65,7 @@ bot.on('sticker', async (ctx) => {
 
 bot.hears("😎 Download Single", async (ctx) => {
   // ctx.reply("Single");
+  if (!globalInfo || !globalInfo.stickerInfo) return;
   const { stickerInfo: { file_id: fileId, is_video: isVideo } } = globalInfo;
   if (fileId) {
     const link = await ctx.telegram.getFileLink(fileId);
