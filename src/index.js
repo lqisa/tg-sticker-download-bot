@@ -21,7 +21,7 @@ const webhookPath = `/${WEBHOOK_PATH}`;
 const bot = new Telegraf(BOT_TOKEN, { handlerTimeout: 900_000 });
 bot.telegram.setWebhook(webhookUrl)
 
-const assertPath = path.resolve(__dirname, 'assets');
+const assertPath = path.resolve(__dirname, '../assets');
 
 const globalInfo = {
   stickerInfo: null,
@@ -193,7 +193,7 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'));
  * for test
  */
 
-// convert2Gif(path.resolve(__dirname, 'assets'), 'CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z').catch(e => {
+// convert2Gif(path.resolve(__dirname, '../assets'), 'CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z').catch(e => {
 //   console.log('error: ', e)
 // })
 
@@ -201,7 +201,7 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'));
 // packFile(
 //   'test',
 //   [
-//     path.resolve(__dirname, 'assets/CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z.gif'),
-//     path.resolve(__dirname, 'assets/CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z.webm'),
+//     path.resolve(__dirname, '../assets/CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z.gif'),
+//     path.resolve(__dirname, '../assets/CAACAgIAAxkBAAO2YxhGI9gmdo4ptE_IMsWkplvWLvsAAkYjAAJ_XyBIOsC5u14Z.webm'),
 //   ]
 // );

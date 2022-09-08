@@ -7,7 +7,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 const path = require('path');
 const https = require('https');
-const assertPath = path.resolve(__dirname, 'assets');
+const assertPath = path.resolve(__dirname, '../assets');
 
 function getFileNameFromPath(p) {
   const winIndex = p.lastIndexOf('\\');
